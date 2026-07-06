@@ -1,0 +1,9 @@
+{
+  "name": "SozaiBanzai 経営ダッシュボード",
+  "short_name": "SozaiBanzai",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#EFECE3",
+  "theme_color": "#1F4B5F",
+  "icons": []
+}

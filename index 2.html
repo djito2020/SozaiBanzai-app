@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SozaiBanzai | 経営ダッシュボード</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F4B5F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --paper:#EFECE3;
+    --paper-raised:#F7F5EE;
+    --ink:#2B2B28;
+    --ink-soft:#5B584E;
+    --line:#DBD4C3;
+    --ai:#1F4B5F;
+    --ai-deep:#163648;
+    --beni:#B23B32;
+    --beni-soft:#F3DEDB;
+    --moss:#57724F;
+    --moss-soft:#DEE6D6;
+    --gold:#A9822F;
+  }
+  *{box-sizing:border-box;}
+  html,body,#root{height:100%;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans JP',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{display:flex;min-height:100vh;}
+  .num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  .display{font-family:'Shippori Mincho',serif;}
+
+  /* Sidebar */
+  .sidebar{
+    width:220px;flex-shrink:0;background:var(--ai-deep);color:#EFECE3;
+    display:flex;flex-direction:column;padding:28px 0;
+  }
+  .brand{padding:0 24px 24px;border-bottom:1px solid rgba(239,236,227,0.15);margin-bottom:12px;}
+  .brand-mark{font-family:'Shippori Mincho',serif;font-size:22px;font-weight:700;letter-spacing:.02em;}
+  .brand-sub{font-size:11px;color:#B7C4C9;margin-top:4px;letter-spacing:.08em;}
+  .nav{flex:1;padding:8px 12px;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:6px;
+    color:#C9D4D6;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:4px;
+    border-left:3px solid transparent;transition:background .15s;
+  }
+  .nav-item:hover{background:rgba(239,236,227,0.06);}
+  .nav-item.active{background:rgba(239,236,227,0.1);color:#fff;border-left:3px solid var(--gold);}
+  .nav-foot{padding:16px 24px;font-size:11px;color:#7C8C90;border-top:1px solid rgba(239,236,227,0.15);}
+
+  /* Main */
+  .main{flex:1;padding:32px 40px;max-width:1180px;}
+  .page-title{font-family:'Shippori Mincho',serif;font-size:26px;font-weight:700;margin:0 0 4px;}
+  .page-sub{color:var(--ink-soft);font-size:13px;margin:0 0 28px;}
+
+  .card{
+    background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;
+    padding:22px 24px;margin-bottom:20px;
+  }
+  .card-title{font-size:13px;font-weight:600;color:var(--ink-soft);letter-spacing:.04em;margin:0 0 16px;text-transform:uppercase;}
+
+  .grid{display:grid;gap:16px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-2{grid-template-columns:1fr;}}
+
+  .kpi-box{border:1px solid var(--line);border-radius:8px;padding:16px 18px;background:#fff;}
+  .kpi-label{font-size:12px;color:var(--ink-soft);margin-bottom:6px;}
+  .kpi-value{font-size:26px;font-weight:600;color:var(--ai-deep);}
+  .kpi-value.num{font-size:24px;}
+
+  button{
+    font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:600;
+    border:none;border-radius:6px;padding:10px 18px;cursor:pointer;transition:opacity .15s;
+  }
+  button.primary{background:var(--ai);color:#fff;}
+  button.primary:hover{opacity:.9;}
+  button.ghost{background:transparent;color:var(--ai);border:1px solid var(--ai);}
+  button.danger{background:transparent;color:var(--beni);border:1px solid var(--beni);}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+
+  input,select{
+    font-family:'Noto Sans JP',sans-serif;font-size:13px;padding:8px 10px;
+    border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);
+  }
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:10px 12px;color:var(--ink-soft);font-weight:600;font-size:11px;
+    text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--line);}
+  td{padding:10px 12px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  .tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+  .tag.ok{background:var(--moss-soft);color:var(--moss);}
+  .tag.warn{background:var(--beni-soft);color:var(--beni);}
+  .empty{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  .empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px;font-family:'Shippori Mincho',serif;}
+  .row-flex{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .field-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
+  .field-row label{font-size:12px;color:var(--ink-soft);min-width:110px;}
+  .chart-wrap{position:relative;height:260px;}
+  .modal-bg{position:fixed;inset:0;background:rgba(22,54,72,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal{background:#fff;border-radius:10px;padding:28px;max-width:520px;width:100%;max-height:85vh;overflow:auto;}
+  .modal h3{font-family:'Shippori Mincho',serif;margin-top:0;}
+  .hint{font-size:12px;color:var(--ink-soft);line-height:1.6;}
+  .small{font-size:12px;color:var(--ink-soft);}
+  .icon-btn{background:none;border:1px solid var(--line);color:var(--ink-soft);padding:5px 9px;font-size:12px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useRef,useMemo} = React;
+
+/* ---------- storage helpers ---------- */
+const LS = {
+  get(key,fallback){ try{ const v = localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; } },
+  set(key,val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+};
+
+const LB_TO_G = 453.59237;
+
+const SAMPLE_INGREDIENTS = [
+  {id:'s1',name:'鶏もも肉（サンプル）',category:'肉類',supplier:'サンプル仕入先',unit:'lb',priceOriginal:3.2,pricePerG:3.2/LB_TO_G,note:'実データに置き換えてください'},
+  {id:'s2',name:'米（サンプル）',category:'主食',supplier:'サンプル仕入先',unit:'kg',priceOriginal:4.5,pricePerG:4.5/1000,note:'実データに置き換えてください'},
+  {id:'s3',name:'醤油（サンプル）',category:'調味料',supplier:'サンプル仕入先',unit:'l',priceOriginal:6.8,pricePerG:6.8/1000,note:'実データに置き換えてください（密度換算は簡易）'},
+];
+
+/* ---------- CSV column mapping keys ---------- */
+const FIELD_DEFS = [
+  {key:'date',label:'日付',required:true},
+  {key:'channel',label:'チャネル（Dining Option等）',required:true},
+  {key:'netAmount',label:'金額（Net/Total）',required:true},
+  {key:'payment',label:'支払い方法',required:false},
+  {key:'time',label:'時刻',required:false},
+  {key:'item',label:'商品名',required:false},
+];
+
+function parseDateSafe(v){
+  if(!v) return null;
+  const d = new Date(v);
+  if(!isNaN(d.getTime())) return d;
+  // try MM/DD/YYYY
+  const m = String(v).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if(m){ const yy = m[3].length===2?'20'+m[3]:m[3]; const d2 = new Date(`${yy}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`); if(!isNaN(d2.getTime())) return d2; }
+  return null;
+}
+
+/* ================= App ================= */
+function App(){
+  const [tab,setTab] = useState('kpi');
+  const [ingredients,setIngredients] = useState(()=>LS.get('sb_ingredients', SAMPLE_INGREDIENTS));
+  const [recipes,setRecipes] = useState(()=>LS.get('sb_recipes', []));
+  const [salesRows,setSalesRows] = useState(()=>LS.get('sb_sales_rows', []));
+  const [mapping,setMapping] = useState(()=>LS.get('sb_csv_mapping', null));
+
+  useEffect(()=>LS.set('sb_ingredients',ingredients),[ingredients]);
+  useEffect(()=>LS.set('sb_recipes',recipes),[recipes]);
+  useEffect(()=>LS.set('sb_sales_rows',salesRows),[salesRows]);
+  useEffect(()=>LS.set('sb_csv_mapping',mapping),[mapping]);
+
+  const NAV = [
+    {key:'kpi',label:'KPIダッシュボード'},
+    {key:'ingredients',label:'食材マスタ'},
+    {key:'recipes',label:'レシピ原価計算'},
+    {key:'data',label:'データ管理'},
+  ];
+
+  return (
+    <div className="app">
+      <div className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">素材番彩</div>
+          <div className="brand-sub">SOZAIBANZAI · KEIEI DASHBOARD</div>
+        </div>
+        <div className="nav">
+          {NAV.map(n=>(
+            <div key={n.key} className={"nav-item"+(tab===n.key?" active":"")} onClick={()=>setTab(n.key)}>
+              {n.label}
+            </div>
+          ))}
+        </div>
+        <div className="nav-foot">v2 · データはこの端末のブラウザ内に保存されます</div>
+      </div>
+      <div className="main">
+        {tab==='kpi' && <KpiTab salesRows={salesRows} setSalesRows={setSalesRows} mapping={mapping} setMapping={setMapping} />}
+        {tab==='ingredients' && <IngredientsTab ingredients={ingredients} setIngredients={setIngredients} />}
+        {tab==='recipes' && <RecipesTab ingredients={ingredients} recipes={recipes} setRecipes={setRecipes} />}
+        {tab==='data' && <DataTab ingredients={ingredients} recipes={recipes} salesRows={salesRows} setIngredients={setIngredients} setRecipes={setRecipes} setSalesRows={setSalesRows} setMapping={setMapping} />}
+      </div>
+    </div>
+  );
+}
+
+/* ================= KPI TAB ================= */
+function KpiTab({salesRows,setSalesRows,mapping,setMapping}){
+  const fileRef = useRef();
+  const [pendingRows,setPendingRows] = useState(null);
+  const [pendingHeaders,setPendingHeaders] = useState(null);
+  const [showMapModal,setShowMapModal] = useState(false);
+  const [draftMap,setDraftMap] = useState({});
+
+  function handleFile(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    Papa.parse(file,{
+      header:true, skipEmptyLines:true,
+      complete:(res)=>{
+        const headers = res.meta.fields || [];
+        setPendingHeaders(headers);
+        setPendingRows(res.data);
+        if(mapping){
+          // already have a mapping saved — try to apply directly
+          commitRows(res.data, mapping, file.name);
+        } else {
+          const guess = {};
+          FIELD_DEFS.forEach(f=>{
+            const hit = headers.find(h=>h.toLowerCase().includes(f.key.toLowerCase()));
+            guess[f.key] = hit || '';
+          });
+          setDraftMap(guess);
+          setShowMapModal(true);
+        }
+      }
+    });
+    e.target.value = '';
+  }
+
+  function commitRows(rawRows, map, filename){
+    const upload_id = Date.now()+'_'+filename;
+    const rows = rawRows.map(r=>({
+      upload_id,
+      date: map.date ? r[map.date] : '',
+      channel: map.channel ? (r[map.channel]||'不明') : '不明',
+      netAmount: map.netAmount ? parseFloat(String(r[map.netAmount]).replace(/[^0-9.\-]/g,''))||0 : 0,
+      payment: map.payment ? r[map.payment] : '',
+      time: map.time ? r[map.time] : '',
+      item: map.item ? r[map.item] : '',
+    })).filter(r=>r.date && r.netAmount!==0);
+    setSalesRows(prev=>[...prev, ...rows]);
+  }
+
+  function confirmMapping(){
+    setMapping(draftMap);
+    commitRows(pendingRows, draftMap, 'upload');
+    setShowMapModal(false);
+    setPendingRows(null);
+  }
+
+  const stats = useMemo(()=>computeStats(salesRows),[salesRows]);
+
+  return (
+    <div>
+      <div className="page-title">KPIダッシュボード</div>
+      <div className="page-sub">Toast POSのCSVをアップロードすると、チャネル・曜日・月次の傾向を自動集計します</div>
+
+      <div className="card">
+        <div className="row-flex">
+          <div>
+            <div className="card-title" style={{marginBottom:4}}>データ取込</div>
+            <div className="small">現在 {salesRows.length.toLocaleString()} 件の売上データを保持中{mapping?'（列マッピング設定済み）':''}</div>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            {mapping && <button className="ghost" onClick={()=>{setMapping(null);}}>列マッピングをリセット</button>}
+            <button className="primary" onClick={()=>fileRef.current.click()}>CSVをアップロード</button>
+            <input ref={fileRef} type="file" accept=".csv" style={{display:'none'}} onChange={handleFile}/>
+          </div>
+        </div>
+      </div>
+
+      {salesRows.length===0 ? (
+        <div className="card"><div className="empty"><b>まだデータがありません</b>Toast POSからエクスポートしたCSVをアップロードしてください</div></div>
+      ) : (
+        <>
+          <div className="grid grid-4">
+            <div className="kpi-box"><div className="kpi-label">総売上</div><div className="kpi-value num">${stats.total.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
+            <div className="kpi-box"><div className="kpi-label">注文件数</div><div className="kpi-value num">{stats.count.toLocaleString()}</div></div>
+            <div className="kpi-box"><div className="kpi-label">平均客単価</div><div className="kpi-value num">${stats.avg.toFixed(2)}</div></div>
+            <div className="kpi-box"><div className="kpi-label">チャネル数</div><div className="kpi-value num">{Object.keys(stats.byChannel).length}</div></div>
+          </div>
+
+          <div className="grid grid-2">
+            <div className="card">
+              <div className="card-title">チャネル別売上構成</div>
+              <div className="chart-wrap"><canvas id="chChannel"></canvas></div>
+            </div>
+            <div className="card">
+              <div className="card-title">曜日別売上パターン</div>
+              <div className="chart-wrap"><canvas id="chDow"></canvas></div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-title">月次売上トレンド</div>
+            <div className="chart-wrap"><canvas id="chMonth"></canvas></div>
+          </div>
+          <ChartRenderer stats={stats} />
+        </>
+      )}
+
+      {showMapModal && (
+        <div className="modal-bg">
+          <div className="modal">
+            <h3>列の対応付け</h3>
+            <p className="hint">アップロードしたCSVの列名を、それぞれの項目に対応させてください。一度設定すれば次回以降の同じ形式のCSVでは自動適用されます。</p>
+            {FIELD_DEFS.map(f=>(
+              <div className="field-row" key={f.key}>
+                <label>{f.label}{f.required?' *':''}</label>
+                <select value={draftMap[f.key]||''} onChange={e=>setDraftMap({...draftMap,[f.key]:e.target.value})}>
+                  <option value="">（未選択）</option>
+                  {pendingHeaders && pendingHeaders.map(h=><option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            ))}
+            <div className="row-flex" style={{marginTop:20}}>
+              <button className="ghost" onClick={()=>{setShowMapModal(false);setPendingRows(null);}}>キャンセル</button>
+              <button className="primary" disabled={!draftMap.date||!draftMap.channel||!draftMap.netAmount} onClick={confirmMapping}>この設定で取込む</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function computeStats(rows){
+  const total = rows.reduce((s,r)=>s+r.netAmount,0);
+  const count = rows.length;
+  const avg = count? total/count : 0;
+  const byChannel = {};
+  const byDow = [0,0,0,0,0,0,0];
+  const byMonth = {};
+  rows.forEach(r=>{
+    byChannel[r.channel] = (byChannel[r.channel]||0)+r.netAmount;
+    const d = parseDateSafe(r.date);
+    if(d){
+      byDow[d.getDay()] += r.netAmount;
+      const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      byMonth[mk] = (byMonth[mk]||0)+r.netAmount;
+    }
+  });
+  return {total,count,avg,byChannel,byDow,byMonth};
+}
+
+function ChartRenderer({stats}){
+  const chartsRef = useRef({});
+  useEffect(()=>{
+    Object.values(chartsRef.current).forEach(c=>c && c.destroy());
+    const dowLabels = ['日','月','火','水','木','金','土'];
+    const monthKeys = Object.keys(stats.byMonth).sort();
+
+    chartsRef.current.channel = new Chart(document.getElementById('chChannel'),{
+      type:'doughnut',
+      data:{labels:Object.keys(stats.byChannel),datasets:[{data:Object.values(stats.byChannel),
+        backgroundColor:['#1F4B5F','#A9822F','#57724F','#B23B32','#7C8C90','#8E7CC3']}]},
+      options:{plugins:{legend:{position:'bottom',labels:{font:{family:'Noto Sans JP',size:11}}}}}
+    });
+    chartsRef.current.dow = new Chart(document.getElementById('chDow'),{
+      type:'bar',
+      data:{labels:dowLabels,datasets:[{data:stats.byDow,backgroundColor:'#1F4B5F',borderRadius:4}]},
+      options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+    chartsRef.current.month = new Chart(document.getElementById('chMonth'),{
+      type:'line',
+      data:{labels:monthKeys,datasets:[{data:monthKeys.map(k=>stats.byMonth[k]),borderColor:'#A9822F',backgroundColor:'rgba(169,130,47,0.15)',fill:true,tension:.3}]},
+      options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+    return ()=>Object.values(chartsRef.current).forEach(c=>c && c.destroy());
+  },[stats]);
+  return null;
+}
+
+/* ================= INGREDIENTS TAB ================= */
+function IngredientsTab({ingredients,setIngredients}){
+  const [editing,setEditing] = useState(null); // ingredient object or null
+  const fileRef = useRef();
+
+  function upsert(ing){
+    setIngredients(prev=>{
+      const exists = prev.some(p=>p.id===ing.id);
+      return exists ? prev.map(p=>p.id===ing.id?ing:p) : [...prev, ing];
+    });
+    setEditing(null);
+  }
+  function remove(id){ setIngredients(prev=>prev.filter(p=>p.id!==id)); }
+
+  function importCsv(e){
+    const file = e.target.files[0]; if(!file) return;
+    Papa.parse(file,{header:true,skipEmptyLines:true,complete:(res)=>{
+      const rows = res.data.map((r,i)=>{
+        const unit = (r.unit||r['単位']||'g').toLowerCase();
+        const priceOriginal = parseFloat(r.price||r['単価']||0)||0;
+        const perG = unit==='lb'? priceOriginal/LB_TO_G : unit==='kg'? priceOriginal/1000 : unit==='l'? priceOriginal/1000 : priceOriginal;
+        return {
+          id:'imp_'+Date.now()+'_'+i,
+          name:r.name||r['品目']||'',
+          category:r.category||r['カテゴリ']||'',
+          supplier:r.supplier||r['仕入先']||'',
+          unit, priceOriginal, pricePerG:perG, note:''
+        };
+      }).filter(r=>r.name);
+      setIngredients(prev=>[...prev, ...rows]);
+    }});
+    e.target.value='';
+  }
+
+  return (
+    <div>
+      <div className="page-title">食材マスタ</div>
+      <div className="page-sub">仕入れ価格を管理します。lb / kg / l はグラム単価に自動換算されます</div>
+
+      <div className="card">
+        <div className="row-flex">
+          <div className="small">{ingredients.length} 品目登録中</div>
+          <div style={{display:'flex',gap:8}}>
+            <button className="ghost" onClick={()=>fileRef.current.click()}>CSVから一括インポート</button>
+            <input ref={fileRef} type="file" accept=".csv" style={{display:'none'}} onChange={importCsv}/>
+            <button className="primary" onClick={()=>setEditing({id:'new_'+Date.now(),name:'',category:'',supplier:'',unit:'g',priceOriginal:0,pricePerG:0,note:''})}>+ 品目を追加</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <table>
+          <thead><tr><th>品目</th><th>カテゴリ</th><th>仕入先</th><th>単価</th><th>g単価</th><th></th></tr></thead>
+          <tbody>
+            {ingredients.map(ing=>(
+              <tr key={ing.id}>
+                <td>{ing.name}</td>
+                <td>{ing.category}</td>
+                <td>{ing.supplier}</td>
+                <td className="num">${ing.priceOriginal} / {ing.unit}</td>
+                <td className="num">${ing.pricePerG.toFixed(4)}/g</td>
+                <td style={{textAlign:'right'}}>
+                  <button className="icon-btn" onClick={()=>setEditing(ing)}>編集</button>{' '}
+                  <button className="icon-btn" onClick={()=>remove(ing.id)}>削除</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && <IngredientModal ing={editing} onCancel={()=>setEditing(null)} onSave={upsert} />}
+    </div>
+  );
+}
+
+function IngredientModal({ing,onCancel,onSave}){
+  const [f,setF] = useState(ing);
+  function computePerG(unit,price){
+    const p = parseFloat(price)||0;
+    if(unit==='lb') return p/LB_TO_G;
+    if(unit==='kg') return p/1000;
+    if(unit==='l') return p/1000;
+    return p;
+  }
+  function change(k,v){
+    const nf = {...f,[k]:v};
+    if(k==='unit'||k==='priceOriginal'){ nf.pricePerG = computePerG(nf.unit, nf.priceOriginal); }
+    setF(nf);
+  }
+  return (
+    <div className="modal-bg">
+      <div className="modal">
+        <h3>{ing.name?'品目を編集':'品目を追加'}</h3>
+        <div className="field-row"><label>品目名</label><input style={{flex:1}} value={f.name} onChange={e=>change('name',e.target.value)}/></div>
+        <div className="field-row"><label>カテゴリ</label><input style={{flex:1}} value={f.category} onChange={e=>change('category',e.target.value)}/></div>
+        <div className="field-row"><label>仕入先</label><input style={{flex:1}} value={f.supplier} onChange={e=>change('supplier',e.target.value)}/></div>
+        <div className="field-row">
+          <label>単位</label>
+          <select value={f.unit} onChange={e=>change('unit',e.target.value)}>
+            <option value="g">g（グラム）</option><option value="kg">kg（キログラム）</option>
+            <option value="lb">lb（ポンド）</option><option value="l">l（リットル）</option>
+          </select>
+          <input type="number" step="0.01" value={f.priceOriginal} onChange={e=>change('priceOriginal',parseFloat(e.target.value)||0)} style={{width:100}}/>
+          <span className="small">$ / {f.unit}</span>
+        </div>
+        <div className="small">→ g単価: ${f.pricePerG.toFixed(5)}/g</div>
+        <div className="row-flex" style={{marginTop:20}}>
+          <button className="ghost" onClick={onCancel}>キャンセル</button>
+          <button className="primary" disabled={!f.name} onClick={()=>onSave(f)}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= RECIPES TAB ================= */
+function RecipesTab({ingredients,recipes,setRecipes}){
+  const [editing,setEditing] = useState(null);
+
+  function upsert(r){
+    setRecipes(prev=>{
+      const exists = prev.some(p=>p.id===r.id);
+      return exists ? prev.map(p=>p.id===r.id?r:p) : [...prev, r];
+    });
+    setEditing(null);
+  }
+  function remove(id){ setRecipes(prev=>prev.filter(p=>p.id!==id)); }
+
+  function calc(recipe){
+    const cost = recipe.lines.reduce((s,l)=>{
+      const ing = ingredients.find(i=>i.id===l.ingredientId);
+      return s + (ing? ing.pricePerG * l.grams : 0);
+    },0);
+    const pct = recipe.price>0? (cost/recipe.price*100) : 0;
+    const profit = recipe.price - cost;
+    return {cost,pct,profit};
+  }
+
+  return (
+    <div>
+      <div className="page-title">レシピ原価計算</div>
+      <div className="page-sub">メニューごとの原価率を自動計算し、目標30〜35%からの乖離を検知します</div>
+
+      <div className="card">
+        <div className="row-flex">
+          <div className="small">{recipes.length} メニュー登録中 ・ 目標原価率 30〜35%</div>
+          <button className="primary" onClick={()=>setEditing({id:'new_'+Date.now(),name:'',price:0,lines:[]})}>+ メニューを追加</button>
+        </div>
+      </div>
+
+      {recipes.length===0 ? (
+        <div className="card"><div className="empty"><b>メニューがまだありません</b>「+ メニューを追加」から原価計算を始めましょう</div></div>
+      ):(
+        <div className="card">
+          <table>
+            <thead><tr><th>メニュー</th><th>売価</th><th>原価</th><th>原価率</th><th>粗利</th><th>判定</th><th></th></tr></thead>
+            <tbody>
+              {recipes.map(r=>{
+                const c = calc(r);
+                const status = c.pct===0? null : (c.pct>=30 && c.pct<=35) ? 'ok' : 'warn';
+                return (
+                  <tr key={r.id}>
+                    <td>{r.name}</td>
+                    <td className="num">${r.price.toFixed(2)}</td>
+                    <td className="num">${c.cost.toFixed(2)}</td>
+                    <td className="num">{c.pct.toFixed(1)}%</td>
+                    <td className="num">${c.profit.toFixed(2)}</td>
+                    <td>{status && <span className={"tag "+status}>{status==='ok'?'適正':'要確認'}</span>}</td>
+                    <td style={{textAlign:'right'}}>
+                      <button className="icon-btn" onClick={()=>setEditing(r)}>編集</button>{' '}
+                      <button className="icon-btn" onClick={()=>remove(r.id)}>削除</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editing && <RecipeModal recipe={editing} ingredients={ingredients} onCancel={()=>setEditing(null)} onSave={upsert} calc={calc}/>}
+    </div>
+  );
+}
+
+function RecipeModal({recipe,ingredients,onCancel,onSave,calc}){
+  const [r,setR] = useState(recipe);
+  const c = calc(r);
+  function addLine(){ setR({...r, lines:[...r.lines, {ingredientId: ingredients[0]?.id||'', grams:0}]}); }
+  function updateLine(i,patch){ const lines=[...r.lines]; lines[i]={...lines[i],...patch}; setR({...r,lines}); }
+  function removeLine(i){ const lines=[...r.lines]; lines.splice(i,1); setR({...r,lines}); }
+  return (
+    <div className="modal-bg">
+      <div className="modal" style={{maxWidth:640}}>
+        <h3>{recipe.name?'メニューを編集':'メニューを追加'}</h3>
+        <div className="field-row"><label>メニュー名</label><input style={{flex:1}} value={r.name} onChange={e=>setR({...r,name:e.target.value})}/></div>
+        <div className="field-row"><label>売価</label><input type="number" step="0.01" value={r.price} onChange={e=>setR({...r,price:parseFloat(e.target.value)||0})}/></div>
+
+        <div className="small" style={{margin:'14px 0 8px'}}>材料</div>
+        {r.lines.map((l,i)=>(
+          <div className="field-row" key={i}>
+            <select style={{flex:1}} value={l.ingredientId} onChange={e=>updateLine(i,{ingredientId:e.target.value})}>
+              {ingredients.map(ing=><option key={ing.id} value={ing.id}>{ing.name}</option>)}
+            </select>
+            <input type="number" style={{width:90}} value={l.grams} onChange={e=>updateLine(i,{grams:parseFloat(e.target.value)||0})}/>
+            <span className="small">g</span>
+            <button className="icon-btn" onClick={()=>removeLine(i)}>削除</button>
+          </div>
+        ))}
+        <button className="ghost" onClick={addLine}>+ 材料を追加</button>
+
+        <div className="card" style={{marginTop:16,padding:'14px 16px'}}>
+          <div className="row-flex">
+            <span className="small">原価: <b className="num">${c.cost.toFixed(2)}</b></span>
+            <span className="small">原価率: <b className="num">{c.pct.toFixed(1)}%</b></span>
+            <span className="small">粗利: <b className="num">${c.profit.toFixed(2)}</b></span>
+          </div>
+        </div>
+
+        <div className="row-flex" style={{marginTop:16}}>
+          <button className="ghost" onClick={onCancel}>キャンセル</button>
+          <button className="primary" disabled={!r.name} onClick={()=>onSave(r)}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= DATA TAB ================= */
+function DataTab({ingredients,recipes,salesRows,setIngredients,setRecipes,setSalesRows,setMapping}){
+  const importRef = useRef();
+  function exportAll(){
+    const payload = {ingredients,recipes,salesRows,exportedAt:new Date().toISOString()};
+    const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=`sozaibanzai_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+    URL.revokeObjectURL(url);
+  }
+  function importAll(e){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(data.ingredients) setIngredients(data.ingredients);
+        if(data.recipes) setRecipes(data.recipes);
+        if(data.salesRows) setSalesRows(data.salesRows);
+        alert('復元しました');
+      }catch(err){ alert('ファイルの読み込みに失敗しました'); }
+    };
+    reader.readAsText(file);
+    e.target.value='';
+  }
+  function resetSales(){ if(confirm('売上データを全て削除します。よろしいですか？')){ setSalesRows([]); setMapping(null); } }
+
+  return (
+    <div>
+      <div className="page-title">データ管理</div>
+      <div className="page-sub">この端末のブラウザ内にデータが保存されています。定期的にバックアップをおすすめします</div>
+
+      <div className="card">
+        <div className="card-title">バックアップ</div>
+        <p className="hint">全データ（食材マスタ・レシピ・売上）を1つのファイルに書き出し、別の端末やもしもの時の復元に使えます。</p>
+        <div style={{display:'flex',gap:10}}>
+          <button className="primary" onClick={exportAll}>バックアップを書き出す</button>
+          <button className="ghost" onClick={()=>importRef.current.click()}>バックアップから復元</button>
+          <input ref={importRef} type="file" accept=".json" style={{display:'none'}} onChange={importAll}/>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">現在のデータ量</div>
+        <div className="grid grid-4">
+          <div className="kpi-box"><div className="kpi-label">食材マスタ</div><div className="kpi-value num">{ingredients.length}</div></div>
+          <div className="kpi-box"><div className="kpi-label">レシピ</div><div className="kpi-value num">{recipes.length}</div></div>
+          <div className="kpi-box"><div className="kpi-label">売上レコード</div><div className="kpi-value num">{salesRows.length}</div></div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">売上データのリセット</div>
+        <p className="hint">CSVの列マッピングをやり直したい時などに使います。食材マスタ・レシピは削除されません。</p>
+        <button className="danger" onClick={resetSales}>売上データを削除</button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
